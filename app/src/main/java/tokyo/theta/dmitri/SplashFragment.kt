@@ -5,6 +5,8 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.navigation.fragment.findNavController
+import tokyo.theta.dmitri.databinding.FragmentSplashBinding
 
 /**
  * A simple [Fragment] subclass.
@@ -15,6 +17,14 @@ class SplashFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_splash, container, false)
+        return FragmentSplashBinding.inflate(inflater, container, false).apply {
+            button.setOnClickListener {
+                findNavController().navigate(SplashFragmentDirections.actionSplashFragmentToBrowserFragment())
+            }
+
+            button2.setOnClickListener {
+                findNavController().navigate(SplashFragmentDirections.actionSplashFragmentToLoginFragment())
+            }
+        }.root
     }
 }
