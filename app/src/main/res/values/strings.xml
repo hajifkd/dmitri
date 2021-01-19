@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">dmitri</string>
+    <string name="mendeley_auth">mendeley-auth</string>
+    <string name="pref_auth_code">pref_auth_code</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <!-- Strings related to login -->
