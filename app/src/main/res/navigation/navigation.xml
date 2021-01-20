@@ -11,19 +11,7 @@
         android:label="Dmitri"
         tools:layout="@layout/fragment_splash">
         <action
-            android:id="@+id/action_splashFragment_to_loginFragment"
-            app:destination="@id/loginFragment" />
-        <action
             android:id="@+id/action_splashFragment_to_browserFragment"
-            app:destination="@id/browserFragment" />
-    </fragment>
-    <fragment
-        android:id="@+id/loginFragment"
-        android:name="tokyo.theta.dmitri.ui.login.LoginFragment"
-        android:label="Log in to Mendeley"
-        tools:layout="@layout/fragment_login">
-        <action
-            android:id="@+id/action_loginFragment_to_browserFragment"
             app:destination="@id/browserFragment" />
     </fragment>
     <fragment
