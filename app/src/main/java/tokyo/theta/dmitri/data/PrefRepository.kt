@@ -3,9 +3,8 @@ package tokyo.theta.dmitri.data
 import android.content.Context
 import androidx.lifecycle.MutableLiveData
 import androidx.preference.PreferenceManager
-import tokyo.theta.dmitri.R
 
-class MendeleyRepository(val context: Context) {
+class PrefRepository(val context: Context) {
     val preferences = PreferenceManager.getDefaultSharedPreferences(context)
 
     fun preferenceMutableLiveStringData(key: String): MutableLiveData<String> =
@@ -18,6 +17,6 @@ class MendeleyRepository(val context: Context) {
         }
 
     fun getStringPreference(key: String): String? = preferences.getString(key, null)
-    fun setStringPreference(key: String, value: String?) = preferences.edit().putString(key, value).apply()
-
+    fun setStringPreference(key: String, value: String?) =
+        preferences.edit().putString(key, value).apply()
 }
