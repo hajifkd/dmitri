@@ -9,14 +9,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.*
 import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import tokyo.theta.dmitri.R
 import tokyo.theta.dmitri.data.model.*
+import java.io.File
+import java.io.IOException
 
 class MendeleyApiRepository(val context: Context) {
 
-    private fun webService(): AuthService {
+    private fun getClient(credential: String?): Retrofit {
         return Retrofit.Builder().apply {
             baseUrl("https://api.mendeley.com/")
             addConverterFactory(GsonConverterFactory.create())
@@ -24,19 +27,32 @@ class MendeleyApiRepository(val context: Context) {
                 OkHttpClient.Builder()
                     .addInterceptor(Interceptor { chain ->
                         chain.proceed(
-                            chain.request().newBuilder().addHeader(
-                                "Authorization",
-                                Credentials.basic(
-                                    context.getString(R.string.mendeley_client_id),
-                                    context.getString(R.string.mendeley_secret)
-                                )
-                            ).build()
+                            chain.request().newBuilder().apply {
+                                credential?.let {
+                                    addHeader(
+                                        "Authorization", it
+                                    )
+                                }
+                            }.build()
                         )
                     })
                     .addInterceptor(HttpLoggingInterceptor().apply { setLevel(HttpLoggingInterceptor.Level.BODY) })
                     .build()
             )
-        }.build().create(AuthService::class.java)
+        }.build()
+    }
+
+    private fun authService(): AuthService {
+        return getClient(
+            Credentials.basic(
+                context.getString(R.string.mendeley_client_id),
+                context.getString(R.string.mendeley_secret)
+            )
+        ).create(AuthService::class.java)
+    }
+
+    private fun apiService(accessToken: String): ApiService {
+        return getClient("Bearer $accessToken").create(ApiService::class.java)
     }
 
     private val redirectUri =
@@ -56,31 +72,61 @@ class MendeleyApiRepository(val context: Context) {
             .appendQueryParameter("state", authState).build()
     }
 
-    suspend fun getToken(authCode: String) {
-        withContext(Dispatchers.IO) {
-            val service = webService()
-            val response =
-                service.requestToken(AuthService.AUTHORIZATION_CODE, authCode, redirectUri)
-                    .execute()
+    private suspend fun tokenApi(f: suspend (AuthService) -> Response<AccessToken>): TokenResult? {
+        val service = authService()
+        val response = try {
+            f(service)
+        } catch (e: IOException) {
+            return NetworkError(e)
+        }
 
-            // TODO check network error
-            val result = if (response.isSuccessful) {
-                response.body()
-            } else {
-                try {
-                    response.errorBody()?.run {
-                        GsonBuilder().create()
-                            .fromJson(string(), AuthError::class.java)
-                    }
-                } catch (e: JsonSyntaxException) {
-                    JsonError(e)
+        // TODO check network error
+        val result = if (response.isSuccessful) {
+            response.body()
+        } else {
+            try {
+                response.errorBody()?.run {
+                    GsonBuilder().create()
+                        .fromJson(withContext(Dispatchers.IO) { string() }, AuthError::class.java)
                 }
+            } catch (e: JsonSyntaxException) {
+                JsonError(e)
             }
+        }
 
-            // TODO add result to sharedpref
-            // observe sharedpreflivedata
+        // TODO add result to sharedpref
+        // observe sharedpreflivedata
 
-            Log.d("aaaaaaaa", "result: ${result}")
+        Log.d("aaaaaaaa", "result: ${result}")
+
+        return result
+    }
+
+    suspend fun getToken(authCode: String): TokenResult? {
+        return tokenApi { it.requestToken(authCode, redirectUri) }
+    }
+
+    suspend fun refreshToken(refreshCode: String): TokenResult? {
+        return tokenApi { it.refreshToken(refreshCode, redirectUri) }
+    }
+
+    suspend fun getUserProfile(accessToken: String): UserProfile? {
+        return apiService(accessToken).profile().body()
+    }
+
+    suspend fun downloadProfilePhoto(url: String): File? {
+        val file = File(context.filesDir, "profile")
+        val service = getClient(null).create(ApiService::class.java)
+        return try {
+            val body = service.download(url)
+            withContext(Dispatchers.IO) {
+                file.writeBytes(body.bytes())
+            }
+            Log.d("profile", file.toString())
+            file
+        } catch (e: IOException) {
+            Log.e("error", e.toString())
+            null
         }
     }
 }

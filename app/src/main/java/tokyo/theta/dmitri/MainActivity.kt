@@ -8,6 +8,7 @@ import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.core.view.GravityCompat
 import androidx.databinding.DataBindingUtil
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.navigation.findNavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.AppBarConfiguration
@@ -65,6 +66,13 @@ class MainActivity : AppCompatActivity() {
                                 R.id.splashFragment
                             )
                         ) View.GONE else View.VISIBLE
+
+                        drawer.setDrawerLockMode(
+                            if (destination.id in arrayOf(
+                                    R.id.splashFragment
+                                )
+                            ) DrawerLayout.LOCK_MODE_LOCKED_CLOSED else DrawerLayout.LOCK_MODE_UNLOCKED
+                        )
                     }
                 }
             }

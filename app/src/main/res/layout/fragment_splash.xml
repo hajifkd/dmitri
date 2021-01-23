@@ -38,6 +38,7 @@
             android:layout_marginStart="120dp"
             android:layout_marginBottom="24dp"
             android:text="Login"
+            android:visibility="gone"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent" />
 

@@ -1,30 +1,40 @@
 package tokyo.theta.dmitri.data.model
 
-import com.google.gson.annotations.SerializedName
+import okhttp3.ResponseBody
 import retrofit2.Call
-import retrofit2.http.Field
-import retrofit2.http.FormUrlEncoded
-import retrofit2.http.POST
+import retrofit2.Response
+import retrofit2.http.*
+
 
 interface AuthService {
     @FormUrlEncoded
     @POST("/oauth/token")
-    fun requestToken(
-        @Field("grant_type") grantType: String,
+    suspend fun requestToken(
         @Field("code") code: String,
-        @Field("redirect_uri") redirectUri: String
-    ): Call<AccessToken>
+        @Field("redirect_uri") redirectUri: String,
+
+        @Field("grant_type") grantType: String = AUTHORIZATION_CODE
+    ): Response<AccessToken>
 
     @FormUrlEncoded
     @POST("/oauth/token")
-    fun refreshToken(
-        @Field("grant_type") grantType: String,
+    suspend fun refreshToken(
         @Field("refresh_token") refreshToken: String,
-        @Field("redirect_uri") redirectUri: String
-    ): Call<AccessToken>
+        @Field("redirect_uri") redirectUri: String,
+
+        @Field("grant_type") grantType: String = REFRESH_TOKEN
+    ): Response<AccessToken>
 
     companion object {
         const val AUTHORIZATION_CODE = "authorization_code"
         const val REFRESH_TOKEN = "refresh_token"
     }
+}
+
+interface ApiService {
+    @GET("/profiles/me")
+    suspend fun profile(): Response<UserProfile>
+
+    @GET
+    suspend fun download(@Url fileUrl: String): ResponseBody
 }

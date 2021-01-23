@@ -3,9 +3,12 @@
     <string name="mendeley_auth">mendeley-auth</string>
     <string name="pref_auth_code">pref_auth_code</string>
     <string name="pref_auth_state">pref_auth_state</string>
+    <string name="pref_access_token">pref_access_token</string>
+    <string name="pref_refresh_token">pref_refresh_token</string>
     <string name="mendeley_secret">uflwzbB6NKuo2HTO</string>
     <string name="mendeley_client_id">9445</string>
     <string name="already_logged_in">Logged in...</string>
     <string name="auth_failed">Authentication failed. Try again.</string>
     <string name="auth_succeeded">Logged in successfully.</string>
+    <string name="pref_user_name">pref_user_name</string>
 </resources>
