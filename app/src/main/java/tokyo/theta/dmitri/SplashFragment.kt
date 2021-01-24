@@ -50,6 +50,7 @@ class SplashFragment : Fragment() {
                     requireActivity().finish()
                 }
                 LoginResult.Successful -> {
+                    viewModel.retrieveFolders()
                     findNavController().navigate(SplashFragmentDirections.actionSplashFragmentToBrowserFragment())
                 }
             }

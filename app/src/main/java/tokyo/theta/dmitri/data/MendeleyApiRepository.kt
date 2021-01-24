@@ -114,8 +114,15 @@ class MendeleyApiRepository(val context: Context) {
         return apiService(accessToken).profile().body()
     }
 
+    suspend fun listFolder(accessToken: String): List<Folder>? {
+        val service = apiService(accessToken)
+        return paginates(service, service.listFolders())
+    }
+
+    fun profileFile() : File = File(context.filesDir, "profile")
+
     suspend fun downloadProfilePhoto(url: String): File? {
-        val file = File(context.filesDir, "profile")
+        val file = profileFile()
         val service = getClient(null).create(ApiService::class.java)
         return try {
             val body = service.download(url)

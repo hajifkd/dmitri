@@ -25,6 +25,14 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
     val apiRepository = MendeleyApiRepository(app)
     val loginResult = MutableLiveData<LoginResult>()
     val profilePhoto = MutableLiveData<File>()
+    val userName = MutableLiveData<String>()
+
+    private fun saveUserName(v: String) {
+        prefRepository.setStringPreference(app.getString(R.string.pref_user_name), v)
+    }
+
+    private fun loadUserName(): String? =
+        prefRepository.getStringPreference(app.getString(R.string.pref_user_name))
 
     var authCode: String?
         get() = prefRepository.getStringPreference(app.getString(R.string.pref_auth_code))
@@ -54,13 +62,6 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
             value
         )
 
-    var userName: String?
-        get() = prefRepository.getStringPreference(app.getString(R.string.pref_user_name))
-        set(value) = prefRepository.setStringPreference(
-            app.getString(R.string.pref_user_name),
-            value
-        )
-
     fun buildOAuthUri(): Uri {
         val state = (0..MendeleyViewModel.AUTH_STATE_LENGTH).map { ('a'..'z').random() }
             .joinToString("")
@@ -76,7 +77,7 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
         }
 
 
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             val rToken = refreshToken
             val result = if (rToken != null) {
                 apiRepository.refreshToken(rToken)
@@ -91,11 +92,14 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
                     try {
                         val prof = apiRepository.getUserProfile(result.accessToken)
                         if (prof?.displayName != null) {
-                            userName = prof.displayName
-                            Log.d("User Name", "$userName")
-                            loginResult.postValue(LoginResult.Successful)
+                            userName.value = prof.displayName
+                            Log.d("User Name", "$userName.value")
+                            loginResult.value = LoginResult.Successful
                             prof.photo?.standard?.let { apiRepository.downloadProfilePhoto(it) }
-                                ?.let { profilePhoto.postValue(it) }
+                                ?.let {
+                                    profilePhoto.value = it
+                                    saveUserName(prof.displayName)
+                                }
                         } else {
                             Log.e("Profile", "failed to get the user data")
                             loginResult.postValue(LoginResult.Failed)
@@ -106,7 +110,10 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
                     }
                 }
                 is NetworkError -> {
-                    if (userName != null) {
+                    val u = loadUserName()
+                    if (u != null) {
+                        userName.value = u
+                        profilePhoto.value = apiRepository.profileFile()
                         loginResult.postValue(LoginResult.Offline)
                     } else {
                         loginResult.postValue(LoginResult.OfflineWithoutData)
@@ -116,6 +123,13 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
                     loginResult.postValue(LoginResult.Failed)
                 }
             }
+        }
+    }
+
+    fun retrieveFolders() {
+        viewModelScope.launch {
+            val folders = accessToken?.let { apiRepository.listFolder(it) }
+            Log.d("folders", "${folders}")
         }
     }
 

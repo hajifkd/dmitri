@@ -1,5 +1,6 @@
 package tokyo.theta.dmitri
 
+import android.graphics.BitmapFactory
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
@@ -9,11 +10,15 @@ import androidx.activity.viewModels
 import androidx.core.view.GravityCompat
 import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.observe
 import androidx.navigation.findNavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.NavigationUI
 import tokyo.theta.dmitri.databinding.ActivityMainBinding
+import tokyo.theta.dmitri.databinding.NavigationHeaderBinding
+import java.io.File
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -50,6 +55,14 @@ class MainActivity : AppCompatActivity() {
 
         binding = DataBindingUtil.setContentView<ActivityMainBinding>(this, R.layout.activity_main)
             .apply {
+                val header = NavigationHeaderBinding.bind(navigation.getHeaderView(0))
+                viewModel.profilePhoto.observe(this@MainActivity) {
+                    header.profileImage.setImageBitmap(BitmapFactory.decodeFile(it.absolutePath))
+                }
+                viewModel.userName.observe(this@MainActivity) {
+                    header.userName.text = it
+                }
+
                 (supportFragmentManager.findFragmentById(R.id.navHostFragment) as NavHostFragment).apply {
                     NavigationUI.setupWithNavController(
                         toolbar,
