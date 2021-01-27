@@ -6,19 +6,14 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import tokyo.theta.dmitri.data.LoginResult
 import tokyo.theta.dmitri.data.MendeleyApiRepository
 import tokyo.theta.dmitri.data.PrefRepository
-import tokyo.theta.dmitri.data.model.AccessToken
-import tokyo.theta.dmitri.data.model.NetworkError
-import java.io.BufferedInputStream
-import java.io.BufferedOutputStream
+import tokyo.theta.dmitri.data.model.webapi.AccessToken
+import tokyo.theta.dmitri.data.model.webapi.NetworkError
 import java.io.File
 import java.lang.Exception
-import java.net.URL
-import kotlin.concurrent.thread
 
 class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
     val prefRepository = PrefRepository(app)
@@ -128,8 +123,8 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun retrieveFolders() {
         viewModelScope.launch {
-            val folders = accessToken?.let { apiRepository.listFolder(it) }
-            Log.d("folders", "${folders}")
+            val docs = accessToken?.let { apiRepository.listFolders(it) }
+            Log.d("folders", "${docs}")
         }
     }
 

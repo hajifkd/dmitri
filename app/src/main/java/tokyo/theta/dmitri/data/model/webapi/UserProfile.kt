@@ -1,4 +1,4 @@
-package tokyo.theta.dmitri.data.model
+package tokyo.theta.dmitri.data.model.webapi
 
 import com.google.gson.annotations.SerializedName
 

@@ -1,7 +1,6 @@
-package tokyo.theta.dmitri.data.model
+package tokyo.theta.dmitri.data.model.webapi
 
 import okhttp3.ResponseBody
-import retrofit2.Call
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -44,8 +43,14 @@ interface ApiService {
     @GET("/documents")
     suspend fun listDocuments(): Response<List<Document>>
 
+    @GET("/files")
+    suspend fun listFiles(): Response<List<File>>
+
     @GET
     suspend fun download(@Url fileUrl: String): ResponseBody
+
+    @GET("/files/{file_id}")
+    suspend fun downloadFile(@Path("file_id") fileId: String): ResponseBody
 
     @GET
     suspend fun <T> additionalData(@Url fileUrl: String): Response<T>

@@ -13,7 +13,7 @@ import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import tokyo.theta.dmitri.R
-import tokyo.theta.dmitri.data.model.*
+import tokyo.theta.dmitri.data.model.webapi.*
 import java.io.File
 import java.io.IOException
 
@@ -114,9 +114,19 @@ class MendeleyApiRepository(val context: Context) {
         return apiService(accessToken).profile().body()
     }
 
-    suspend fun listFolder(accessToken: String): List<Folder>? {
+    suspend fun listFolders(accessToken: String): List<Folder>? {
         val service = apiService(accessToken)
         return paginates(service, service.listFolders())
+    }
+
+    suspend fun listDocuments(accessToken: String): List<Document>? {
+        val service = apiService(accessToken)
+        return paginates(service, service.listDocuments())
+    }
+
+    suspend fun listFiles(accessToken: String): List<tokyo.theta.dmitri.data.model.webapi.File>? {
+        val service = apiService(accessToken)
+        return paginates(service, service.listFiles())
     }
 
     fun profileFile() : File = File(context.filesDir, "profile")
