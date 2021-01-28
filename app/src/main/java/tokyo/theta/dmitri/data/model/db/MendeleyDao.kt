@@ -4,7 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.room.*
 
 @Dao
-interface MendeleyDao {
+interface FolderDao {
     @Insert
     suspend fun insertFolders(folders: List<Folder>)
 
@@ -14,7 +14,10 @@ interface MendeleyDao {
     @Transaction
     @Query("select * from Folder")
     fun folders(): LiveData<List<FolderContent>>
+}
 
+@Dao
+interface DocumentDao {
 
     @Insert
     suspend fun insertDocuments(documents: List<Document>)
@@ -28,14 +31,22 @@ interface MendeleyDao {
 
 
     @Insert
-    suspend fun insertFolderDocumentCrossRefs(documents: List<FolderDocumentCrossRef>)
+    suspend fun insertFolderDocumentCrossRefs(crossRefs: List<FolderDocumentCrossRef>)
 
     @Query("delete from FolderDocumentCrossRef")
     suspend fun clearFolderDocumentCrossRef()
 
+    @Query("select * from Document where id = :id limit 1")
+    suspend fun findById(id: String): Document?
 
+    @Query("select Folder.* from Folder inner join FolderDocumentCrossRef on FolderDocumentCrossRef.folderId = Folder.id where FolderDocumentCrossRef.documentId = :id limit 1")
+    suspend fun findOneParentFolderById(id: String): Folder?
+}
+
+@Dao
+interface FileDao {
     @Insert
-    suspend fun insertFiles(documents: List<File>)
+    suspend fun insertFiles(files: List<File>)
 
     @Query("delete from File")
     suspend fun clearFiles()
@@ -46,10 +57,6 @@ interface MendeleyDao {
     @Update
     suspend fun updateFile(file: File)
 
-    suspend fun clearDb() {
-        clearFiles()
-        clearFolderDocumentCrossRef()
-        clearDocuments()
-        clearFolderDocumentCrossRef()
-    }
+    @Query("select * from File where id = :id limit 1")
+    suspend fun findById(id: String): File?
 }

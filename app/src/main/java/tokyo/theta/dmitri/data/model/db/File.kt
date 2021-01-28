@@ -20,6 +20,6 @@ data class File(
     val documentId: String,
     val fileHash: String,
     val name: String,
-    val localFileName: String?,
+    var localFileName: String?,
     var isDownloaded: Boolean
 )

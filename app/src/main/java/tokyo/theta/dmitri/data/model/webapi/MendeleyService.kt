@@ -40,6 +40,9 @@ interface ApiService {
     @GET("/folders")
     suspend fun listFolders(@Query("limit") limit: Int = 5): Response<List<Folder>>
 
+    @GET("/folders/{folder_id}")
+    suspend fun documentIdsInFolder(@Path("folder_id") folderId: String): Response<List<DocumentId>>
+
     @GET("/documents")
     suspend fun listDocuments(): Response<List<Document>>
 
