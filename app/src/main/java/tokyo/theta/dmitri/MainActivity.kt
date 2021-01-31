@@ -3,14 +3,12 @@ package tokyo.theta.dmitri
 import android.graphics.BitmapFactory
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.core.view.GravityCompat
 import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
-import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.observe
 import androidx.navigation.findNavController
 import androidx.navigation.fragment.NavHostFragment
@@ -18,7 +16,6 @@ import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.NavigationUI
 import tokyo.theta.dmitri.databinding.ActivityMainBinding
 import tokyo.theta.dmitri.databinding.NavigationHeaderBinding
-import java.io.File
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding

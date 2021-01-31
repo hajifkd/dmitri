@@ -30,7 +30,7 @@ class SplashFragment : Fragment() {
         binding = FragmentSplashBinding.inflate(inflater, container, false).apply {
             button.setOnClickListener {
                 viewModel.login()
-                Log.e("aaaaa", "bbbbbb")
+                button.visibility = View.INVISIBLE
             }
 
             button2.setOnClickListener {
@@ -50,7 +50,7 @@ class SplashFragment : Fragment() {
                     requireActivity().finish()
                 }
                 LoginResult.Successful -> {
-                    viewModel.retrieveFolders()
+                    viewModel.updateData()
                     findNavController().navigate(SplashFragmentDirections.actionSplashFragmentToBrowserFragment())
                 }
             }

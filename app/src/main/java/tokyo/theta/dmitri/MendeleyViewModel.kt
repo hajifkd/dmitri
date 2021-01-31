@@ -4,12 +4,17 @@ import android.app.Application
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import tokyo.theta.dmitri.data.LoginResult
 import tokyo.theta.dmitri.data.MendeleyApiRepository
+import tokyo.theta.dmitri.data.MendeleyDataRepository
 import tokyo.theta.dmitri.data.PrefRepository
+import tokyo.theta.dmitri.data.model.db.Document
+import tokyo.theta.dmitri.data.model.db.File as DbFile
+import tokyo.theta.dmitri.data.model.db.FolderContent
 import tokyo.theta.dmitri.data.model.webapi.AccessToken
 import tokyo.theta.dmitri.data.model.webapi.NetworkError
 import java.io.File
@@ -18,9 +23,26 @@ import java.lang.Exception
 class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
     val prefRepository = PrefRepository(app)
     val apiRepository = MendeleyApiRepository(app)
-    val loginResult = MutableLiveData<LoginResult>()
-    val profilePhoto = MutableLiveData<File>()
-    val userName = MutableLiveData<String>()
+    val dataRepository = MendeleyDataRepository(app)
+
+    private val _loginResult = MutableLiveData<LoginResult>()
+    val loginResult: LiveData<LoginResult>
+        get() = _loginResult
+
+    private val _profilePhoto = MutableLiveData<File>()
+    val profilePhoto: LiveData<File>
+        get() = _profilePhoto
+
+    private val _userName = MutableLiveData<String>()
+    val userName: LiveData<String>
+        get() = _userName
+
+    // db data
+    val folders: LiveData<List<FolderContent>> = dataRepository.database.getFolderDao().folders()
+
+    suspend fun findFilesForDocument(document: Document): List<DbFile> {
+        return dataRepository.database.getFileDao().findByDocumentId(document.id)
+    }
 
     private fun saveUserName(v: String) {
         prefRepository.setStringPreference(app.getString(R.string.pref_user_name), v)
@@ -67,7 +89,7 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
     fun login() {
         val authCode = authCode
         if (authCode == null) {
-            loginResult.value = LoginResult.Failed
+            _loginResult.value = LoginResult.Failed
             return
         }
 
@@ -87,44 +109,55 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
                     try {
                         val prof = apiRepository.getUserProfile(result.accessToken)
                         if (prof?.displayName != null) {
-                            userName.value = prof.displayName
-                            Log.d("User Name", "$userName.value")
-                            loginResult.value = LoginResult.Successful
+                            _userName.value = prof.displayName
+                            Log.d("User Name", "$_userName.value")
+                            _loginResult.value = LoginResult.Successful
                             prof.photo?.standard?.let { apiRepository.downloadProfilePhoto(it) }
                                 ?.let {
-                                    profilePhoto.value = it
+                                    _profilePhoto.value = it
                                     saveUserName(prof.displayName)
                                 }
                         } else {
                             Log.e("Profile", "failed to get the user data")
-                            loginResult.postValue(LoginResult.Failed)
+                            _loginResult.postValue(LoginResult.Failed)
                         }
                     } catch (e: Exception) {
                         Log.e("Profile", "failed to get the user data")
-                        loginResult.postValue(LoginResult.Failed)
+                        _loginResult.postValue(LoginResult.Failed)
                     }
                 }
                 is NetworkError -> {
                     val u = loadUserName()
                     if (u != null) {
-                        userName.value = u
-                        profilePhoto.value = apiRepository.profileFile()
-                        loginResult.postValue(LoginResult.Offline)
+                        _userName.value = u
+                        _profilePhoto.value = apiRepository.profileFile()
+                        _loginResult.postValue(LoginResult.Offline)
                     } else {
-                        loginResult.postValue(LoginResult.OfflineWithoutData)
+                        _loginResult.postValue(LoginResult.OfflineWithoutData)
                     }
                 }
                 else -> {
-                    loginResult.postValue(LoginResult.Failed)
+                    _loginResult.postValue(LoginResult.Failed)
                 }
             }
         }
     }
 
-    fun retrieveFolders() {
+    fun updateData() {
         viewModelScope.launch {
-            val docs = accessToken?.let { apiRepository.listFolders(it) }
-            Log.d("folders", "${docs}")
+            val folders = accessToken?.let { apiRepository.listFolders(it) } ?: listOf()
+            val folderContents = folders.mapNotNull { folder ->
+                accessToken?.let { token ->
+                    apiRepository.documentIdsInFolder(
+                        token,
+                        folder
+                    )?.let { Pair(folder, it) }
+                }
+            }.toMap()
+            val documents = accessToken?.let { apiRepository.listDocuments(it) } ?: listOf()
+            val files = accessToken?.let { apiRepository.listFiles(it) } ?: listOf()
+
+            dataRepository.updateData(folders, folderContents, documents, files)
         }
     }
 

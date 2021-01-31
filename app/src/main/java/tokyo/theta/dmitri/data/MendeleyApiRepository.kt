@@ -97,8 +97,6 @@ class MendeleyApiRepository(val context: Context) {
         // TODO add result to sharedpref
         // observe sharedpreflivedata
 
-        Log.d("aaaaaaaa", "result: ${result}")
-
         return result
     }
 
@@ -122,6 +120,11 @@ class MendeleyApiRepository(val context: Context) {
     suspend fun listDocuments(accessToken: String): List<Document>? {
         val service = apiService(accessToken)
         return paginates(service, service.listDocuments())
+    }
+
+    suspend fun documentIdsInFolder(accessToken: String, folder: Folder): List<DocumentId>? {
+        val service = apiService(accessToken)
+        return paginates(service, service.documentIdsInFolder(folder.id))
     }
 
     suspend fun listFiles(accessToken: String): List<tokyo.theta.dmitri.data.model.webapi.File>? {

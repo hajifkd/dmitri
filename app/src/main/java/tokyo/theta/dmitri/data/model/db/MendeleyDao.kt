@@ -29,6 +29,9 @@ interface DocumentDao {
     @Query("select * from Document")
     fun documents(): LiveData<List<DocumentWithFiles>>
 
+    @Transaction
+    @Query("select * from Document where id = :id limit 1")
+    suspend fun document(id: String): DocumentWithFiles?
 
     @Insert
     suspend fun insertFolderDocumentCrossRefs(crossRefs: List<FolderDocumentCrossRef>)
@@ -59,4 +62,10 @@ interface FileDao {
 
     @Query("select * from File where id = :id limit 1")
     suspend fun findById(id: String): File?
+
+    @Query("select File.* from Document inner join File on File.documentId = Document.id where Document.id = :documentId")
+    suspend fun findByDocumentId(documentId: String): List<File>
+
+    @Query("select * from File where isDownloaded")
+    suspend fun downloadedFiles(): List<File>
 }

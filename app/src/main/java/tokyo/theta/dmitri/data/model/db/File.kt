@@ -23,3 +23,5 @@ data class File(
     var localFileName: String?,
     var isDownloaded: Boolean
 )
+
+// TODO localupdate?

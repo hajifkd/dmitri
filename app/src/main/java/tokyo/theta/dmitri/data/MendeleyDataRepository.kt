@@ -8,6 +8,7 @@ import android.provider.MediaStore
 import androidx.room.Room
 import tokyo.theta.dmitri.R
 import tokyo.theta.dmitri.data.model.db.*
+import tokyo.theta.dmitri.data.model.webapi.DocumentId
 import java.io.FileOutputStream
 import java.io.File as jFile
 import tokyo.theta.dmitri.data.model.webapi.Folder as wFolder
@@ -17,31 +18,35 @@ import tokyo.theta.dmitri.data.model.webapi.File as wFile
 class MendeleyDataRepository(val context: Context) {
     val database = Room.databaseBuilder(context, MendeleyDatabase::class.java, "dmitri.db").build()
 
-    suspend fun saveData(
+    suspend fun updateData(
         wFolders: List<wFolder>,
-        folderContents: Map<String, List<wDocument>>,
+        folderContents: Map<wFolder, List<DocumentId>>,
         wDocuments: List<wDocument>,
         wFiles: List<wFile>
     ) {
+        val downloadedFiles =
+            database.getFileDao().downloadedFiles().map { Pair(it.id, it) }.toMap()
         database.getFolderDao().insertFolders(wFolders.map { Folder(it.id, it.name) })
         database.getDocumentDao().insertDocuments(wDocuments.map { Document(it.id, it.title) })
         database.getDocumentDao()
-            .insertFolderDocumentCrossRefs(folderContents.flatMap { (folderId, documentIds) ->
+            .insertFolderDocumentCrossRefs(folderContents.flatMap { (folder, documentIds) ->
                 documentIds.map {
                     FolderDocumentCrossRef(
-                        folderId,
+                        folder.id,
                         it.id
                     )
                 }
             })
+
+        // TODO check if a file is downloaded
         database.getFileDao().insertFiles(wFiles.map {
             File(
                 it.id,
                 it.documentId,
                 it.fileHash,
                 it.fileName,
-                null,
-                false
+                downloadedFiles.get(it.id)?.localFileName,
+                it.id in downloadedFiles
             )
         })
     }
