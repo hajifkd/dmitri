@@ -13,6 +13,7 @@ import tokyo.theta.dmitri.data.MendeleyApiRepository
 import tokyo.theta.dmitri.data.MendeleyDataRepository
 import tokyo.theta.dmitri.data.PrefRepository
 import tokyo.theta.dmitri.data.model.db.Document
+import tokyo.theta.dmitri.data.model.db.Folder
 import tokyo.theta.dmitri.data.model.db.File as DbFile
 import tokyo.theta.dmitri.data.model.db.FolderContent
 import tokyo.theta.dmitri.data.model.webapi.AccessToken
@@ -38,7 +39,7 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
         get() = _userName
 
     // db data
-    val folders: LiveData<List<FolderContent>> = dataRepository.database.getFolderDao().folders()
+    val folders: LiveData<List<Folder>> = dataRepository.database.getFolderDao().folders()
 
     suspend fun findFilesForDocument(document: Document): List<DbFile> {
         return dataRepository.database.getFileDao().findByDocumentId(document.id)
@@ -146,18 +147,42 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
     fun updateData() {
         viewModelScope.launch {
             val folders = accessToken?.let { apiRepository.listFolders(it) } ?: listOf()
+            Log.d("folders", folders.toString())
             val folderContents = folders.mapNotNull { folder ->
                 accessToken?.let { token ->
                     apiRepository.documentIdsInFolder(
                         token,
                         folder
-                    )?.let { Pair(folder, it) }
+                    )?.let {
+                        Pair(folder, it)
+                    }
                 }
-            }.toMap()
+            }
+            Log.d("docids", folderContents.toString())
+            Log.d("folderContents", folderContents.toString())
             val documents = accessToken?.let { apiRepository.listDocuments(it) } ?: listOf()
             val files = accessToken?.let { apiRepository.listFiles(it) } ?: listOf()
 
-            dataRepository.updateData(folders, folderContents, documents, files)
+            dataRepository.updateData(folders, folderContents.toMap(), documents, files)
+        }
+    }
+
+    fun folderContent(folderId: String): LiveData<FolderContent> =
+        dataRepository.database.getFolderDao().folderContent(folderId)
+
+    suspend fun getFiles(document: Document): List<DbFile> =
+        dataRepository.database.getFileDao().findByDocumentId(document.id)
+
+    //suspend fun localFileUri(file: DbFile): Uri? = dataRepository.filePath(file)
+
+    suspend fun downloadFile(file: DbFile) {
+        val data = accessToken?.let { apiRepository.downloadFile(it, file.id) }
+        Log.d("Download", "Downloading ${file.name}...")
+        data?.let {
+            Log.d("Download", "Downloading ${file.name} is successful. Save it.")
+            dataRepository.saveFile(file, data)
+            Log.d("Download", "${file.name} is saved at ${file.localFileName}")
+            //dataRepository.filePath(file)
         }
     }
 

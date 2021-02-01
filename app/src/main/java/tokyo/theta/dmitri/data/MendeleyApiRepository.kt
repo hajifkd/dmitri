@@ -19,7 +19,10 @@ import java.io.IOException
 
 class MendeleyApiRepository(val context: Context) {
 
-    private fun getClient(credential: String?): Retrofit {
+    private fun getClient(
+        credential: String?,
+        httpLogLevel: HttpLoggingInterceptor.Level
+    ): Retrofit {
         return Retrofit.Builder().apply {
             baseUrl("https://api.mendeley.com/")
             addConverterFactory(GsonConverterFactory.create())
@@ -36,7 +39,7 @@ class MendeleyApiRepository(val context: Context) {
                             }.build()
                         )
                     })
-                    .addInterceptor(HttpLoggingInterceptor().apply { setLevel(HttpLoggingInterceptor.Level.BODY) })
+                    .addInterceptor(HttpLoggingInterceptor().apply { setLevel(httpLogLevel) })
                     .build()
             )
         }.build()
@@ -47,12 +50,15 @@ class MendeleyApiRepository(val context: Context) {
             Credentials.basic(
                 context.getString(R.string.mendeley_client_id),
                 context.getString(R.string.mendeley_secret)
-            )
+            ), HttpLoggingInterceptor.Level.BODY
         ).create(AuthService::class.java)
     }
 
-    private fun apiService(accessToken: String): ApiService {
-        return getClient("Bearer $accessToken").create(ApiService::class.java)
+    private fun apiService(
+        accessToken: String,
+        httpLogLevel: HttpLoggingInterceptor.Level = HttpLoggingInterceptor.Level.BODY
+    ): ApiService {
+        return getClient("Bearer $accessToken", httpLogLevel).create(ApiService::class.java)
     }
 
     private val redirectUri =
@@ -132,11 +138,19 @@ class MendeleyApiRepository(val context: Context) {
         return paginates(service, service.listFiles())
     }
 
-    fun profileFile() : File = File(context.filesDir, "profile")
+    suspend fun downloadFile(accessToken: String, fileId: String): ByteArray {
+        val service = apiService(accessToken, HttpLoggingInterceptor.Level.HEADERS)
+        return withContext(Dispatchers.IO) {
+            service.downloadFile(fileId).bytes()
+        }
+    }
+
+    fun profileFile(): File = File(context.filesDir, "profile")
 
     suspend fun downloadProfilePhoto(url: String): File? {
         val file = profileFile()
-        val service = getClient(null).create(ApiService::class.java)
+        val service =
+            getClient(null, HttpLoggingInterceptor.Level.HEADERS).create(ApiService::class.java)
         return try {
             val body = service.download(url)
             withContext(Dispatchers.IO) {

@@ -11,9 +11,16 @@ interface FolderDao {
     @Query("delete from Folder")
     suspend fun clearFolders()
 
+    @Query("select * from Folder")
+    fun folders(): LiveData<List<Folder>>
+
     @Transaction
     @Query("select * from Folder")
-    fun folders(): LiveData<List<FolderContent>>
+    fun folderContents(): LiveData<List<FolderContent>>
+
+    @Transaction
+    @Query("select * from Folder where id = :id limit 1")
+    fun folderContent(id: String): LiveData<FolderContent>
 }
 
 @Dao
@@ -28,6 +35,9 @@ interface DocumentDao {
     @Transaction
     @Query("select * from Document")
     fun documents(): LiveData<List<DocumentWithFiles>>
+
+    @Query("select Document.* from Folder inner join FolderDocumentCrossRef on FolderDocumentCrossRef.folderId = Folder.id inner join Document on Document.id = FolderDocumentCrossRef.documentId where Folder.id = :folderId ")
+    suspend fun documentsInFolder(folderId: String): List<Document>
 
     @Transaction
     @Query("select * from Document where id = :id limit 1")

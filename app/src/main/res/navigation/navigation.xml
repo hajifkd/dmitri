@@ -18,5 +18,18 @@
         android:id="@+id/browserFragment"
         android:name="tokyo.theta.dmitri.BrowserFragment"
         android:label="Folders"
-        tools:layout="@layout/fragment_browser" />
+        tools:layout="@layout/fragment_browser">
+        <action
+            android:id="@+id/action_browserFragment_to_folderFragment"
+            app:destination="@id/folderFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/folderFragment"
+        android:name="tokyo.theta.dmitri.FolderFragment"
+        android:label="Contents"
+        tools:layout="@layout/fragment_folder" >
+        <argument android:name="folderId"
+            app:argType="string" />
+    </fragment>
 </navigation>

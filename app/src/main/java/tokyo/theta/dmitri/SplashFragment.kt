@@ -39,7 +39,7 @@ class SplashFragment : Fragment() {
         }
 
         viewModel.loginResult.observe(viewLifecycleOwner) { loginResult: LoginResult ->
-            when(loginResult) {
+            when (loginResult) {
                 LoginResult.Failed -> {
                     binding.button2.visibility = View.VISIBLE
                 }
@@ -50,7 +50,9 @@ class SplashFragment : Fragment() {
                     requireActivity().finish()
                 }
                 LoginResult.Successful -> {
-                    viewModel.updateData()
+                    if (viewModel.folders.value?.size == 0) {
+                        viewModel.updateData() // probably stop here and show msg
+                    }
                     findNavController().navigate(SplashFragmentDirections.actionSplashFragmentToBrowserFragment())
                 }
             }
