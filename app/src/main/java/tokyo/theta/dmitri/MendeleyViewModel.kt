@@ -173,7 +173,7 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
     suspend fun getFiles(document: Document): List<DbFile> =
         dataRepository.database.getFileDao().findByDocumentId(document.id)
 
-    //suspend fun localFileUri(file: DbFile): Uri? = dataRepository.filePath(file)
+    suspend fun localFileUri(file: DbFile): Uri? = dataRepository.fileUri(file)
 
     suspend fun downloadFile(file: DbFile) {
         val data = accessToken?.let { apiRepository.downloadFile(it, file.id) }

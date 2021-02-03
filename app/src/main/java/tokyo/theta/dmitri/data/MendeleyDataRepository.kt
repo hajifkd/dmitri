@@ -1,5 +1,6 @@
 package tokyo.theta.dmitri.data
 
+import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
@@ -7,6 +8,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
+import android.webkit.MimeTypeMap
 import androidx.room.Room
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -14,10 +16,11 @@ import tokyo.theta.dmitri.R
 import tokyo.theta.dmitri.data.model.db.*
 import tokyo.theta.dmitri.data.model.webapi.DocumentId
 import java.io.OutputStream
-import java.io.File as jFile
-import tokyo.theta.dmitri.data.model.webapi.Folder as wFolder
 import tokyo.theta.dmitri.data.model.webapi.Document as wDocument
 import tokyo.theta.dmitri.data.model.webapi.File as wFile
+import tokyo.theta.dmitri.data.model.webapi.Folder as wFolder
+import java.io.File as jFile
+
 
 class MendeleyDataRepository(private val context: Context) {
     val database = Room.databaseBuilder(context, MendeleyDatabase::class.java, "dmitri.db").build()
@@ -65,46 +68,65 @@ class MendeleyDataRepository(private val context: Context) {
         })
     }
 
-    /*suspend fun filePath(file: File): Uri? {
-        withContext(Dispatchers.IO) {
-            val resolver = context.contentResolver
+    private fun nameAndRelativePath(file: File): Pair<String, String>? {
+        return file.localFileName?.let {
+            val localFile = jFile(it)
+            Pair(localFile.name, "${Environment.DIRECTORY_DOCUMENTS}/dmitri/${localFile.parent}")
+        }
+    }
 
+    suspend fun fileUri(file: File): Uri? {
+        val resolver = context.contentResolver
+        if (file.localFileName == null) {
+            return null
+        }
+        val (name, rPath) = nameAndRelativePath(file)!!
+
+        return withContext(Dispatchers.IO) {
             resolver.query(
-                MediaStore.D,
-                null,
-                null,
-                null,
-                SORT_ORDER
+                MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL),
+                arrayOf(MediaStore.MediaColumns._ID),
+                "${MediaStore.MediaColumns.RELATIVE_PATH}=? AND ${MediaStore.MediaColumns.DISPLAY_NAME}=?",
+                arrayOf(rPath, name),
+                null
             )
-                ?.use { cursor ->
-                    cursor.mapToList { it.getString(0) }
+        }?.let {
+            if (it.count == 0) {
+                // new file
+                ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, rPath)
+                    put(
+                        MediaStore.MediaColumns.MIME_TYPE,
+                        MimeTypeMap.getSingleton().getMimeTypeFromExtension(name.split('.').last())
+                            ?: "application/octet-stream"
+                    )
+                }.let {
+                    context.contentResolver.run {
+                        val uri =
+                            insert(MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL), it)
+                        Log.d("New file uri", "$uri")
+                        uri
+                    }
                 }
+            } else {
+                it.moveToFirst()
+                val id = it.getLong(it.getColumnIndex(MediaStore.MediaColumns._ID))
+                ContentUris.withAppendedId(
+                    MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL),
+                    id
+                )
+            }
         }
 
-    }*/
+    }
 
     private suspend fun outputStream(file: File): OutputStream? {
         return withContext(Dispatchers.IO) {
             file.localFileName?.let {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    val localFile = jFile(it)
-                    ContentValues().apply {
-                        put(MediaStore.MediaColumns.DISPLAY_NAME, localFile.name)
-                        put(
-                            MediaStore.MediaColumns.RELATIVE_PATH,
-                            "${Environment.DIRECTORY_DOCUMENTS}/dmitri/${localFile.parent}"
-                        )
-                        put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
-
-                    }.let {
-                        context.contentResolver.run {
-                            val uri = insert(
-                                MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL),
-                                it
-                            )
-                            Log.d("hogehoge", "$uri")
-                            uri?.let { openOutputStream(it) }
-                        }
+                    context.contentResolver.run {
+                        fileUri(file)?.let { openOutputStream(it) }
                     }
                 } else {
                     val docDir =

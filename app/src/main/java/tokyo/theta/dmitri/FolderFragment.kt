@@ -25,7 +25,7 @@ class FolderFragment : Fragment() {
     private val args: FolderFragmentArgs by navArgs()
     private val viewModel: MendeleyViewModel by activityViewModels()
 
-    suspend fun clickDocument(document: Document) {
+    private suspend fun clickDocument(document: Document) {
         val files = viewModel.getFiles(document)
 
         if (files.isEmpty()) {
@@ -41,29 +41,26 @@ class FolderFragment : Fragment() {
 
         Log.d("file", "$file")
 
-        if (file.isDownloaded) {
-
-        } else {
+        if (!file.isDownloaded) {
             Toast.makeText(requireActivity(), "Downloading ${file.name}", Toast.LENGTH_SHORT).show()
             val result = viewModel.downloadFile(file)
             Toast.makeText(requireActivity(), "Downloaded ${file.name}", Toast.LENGTH_SHORT).show()
-            result
         }
 
         val mimeTypeMap = MimeTypeMap.getSingleton()
         val mime = mimeTypeMap.getMimeTypeFromExtension(file.name.split('.').last())
 
         val intent = Intent(Intent.ACTION_VIEW)
-        intent.setDataAndType(Uri.parse("content://media/external/file/180541"), mime)
+        intent.setDataAndType(viewModel.localFileUri(file), mime)
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        Log.d("file", "$intent")
+        Log.d("Open file intent", "$intent")
         startActivity(intent)
     }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         // Inflate the layout for this fragment
         // return inflater.inflate(R.layout.fragment_browser, container, false)
         binding = FragmentFolderBinding.inflate(inflater, container, false)
