@@ -11,6 +11,9 @@ interface FolderDao {
     @Query("delete from Folder")
     suspend fun clearFolders()
 
+    @Query("select count(id)=0 from Folder limit 1")
+    suspend fun isEmpty(): Boolean
+
     @Query("select * from Folder")
     fun folders(): LiveData<List<Folder>>
 

@@ -71,7 +71,7 @@ class MendeleyDataRepository(private val context: Context) {
     private fun nameAndRelativePath(file: File): Pair<String, String>? {
         return file.localFileName?.let {
             val localFile = jFile(it)
-            Pair(localFile.name, "${Environment.DIRECTORY_DOCUMENTS}/dmitri/${localFile.parent}")
+            Pair(localFile.name, "${Environment.DIRECTORY_DOCUMENTS}/dmitri/${localFile.parent}/")
         }
     }
 
@@ -82,20 +82,41 @@ class MendeleyDataRepository(private val context: Context) {
         }
         val (name, rPath) = nameAndRelativePath(file)!!
 
+        Log.d("uri", "${MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)}")
+
+        resolver.query(
+            MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL),
+            null,
+            null,
+            null,
+            null
+        )?.let {
+            while (it.moveToNext()) {
+                Log.d(
+                    "query",
+                    "${it.getString(it.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME))}, ${
+                        it.getString(it.getColumnIndex(MediaStore.Files.FileColumns.RELATIVE_PATH))
+                    }"
+                )
+            }
+        }
+
+
         return withContext(Dispatchers.IO) {
             resolver.query(
                 MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL),
-                arrayOf(MediaStore.MediaColumns._ID),
-                "${MediaStore.MediaColumns.RELATIVE_PATH}=? AND ${MediaStore.MediaColumns.DISPLAY_NAME}=?",
+                null,
+                "${MediaStore.Files.FileColumns.RELATIVE_PATH}=? and ${MediaStore.Files.FileColumns.DISPLAY_NAME}=?",
                 arrayOf(rPath, name),
                 null
             )
         }?.let {
+            Log.d("File query", "filename: $name, count: ${it.count}")
             if (it.count == 0) {
                 // new file
                 ContentValues().apply {
-                    put(MediaStore.MediaColumns.DISPLAY_NAME, name)
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, rPath)
+                    put(MediaStore.Files.FileColumns.DISPLAY_NAME, name)
+                    put(MediaStore.Files.FileColumns.RELATIVE_PATH, rPath)
                     put(
                         MediaStore.MediaColumns.MIME_TYPE,
                         MimeTypeMap.getSingleton().getMimeTypeFromExtension(name.split('.').last())

@@ -41,6 +41,8 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
     // db data
     val folders: LiveData<List<Folder>> = dataRepository.database.getFolderDao().folders()
 
+    suspend fun isDbEmpty() = dataRepository.database.getFolderDao().isEmpty()
+
     suspend fun findFilesForDocument(document: Document): List<DbFile> {
         return dataRepository.database.getFileDao().findByDocumentId(document.id)
     }
@@ -173,7 +175,12 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
     suspend fun getFiles(document: Document): List<DbFile> =
         dataRepository.database.getFileDao().findByDocumentId(document.id)
 
-    suspend fun localFileUri(file: DbFile): Uri? = dataRepository.fileUri(file)
+    suspend fun localFileUri(file: DbFile): Uri? {
+        val uri = dataRepository.fileUri(file)
+
+        Log.d("local file uri", "uri: ${uri}, file: ${file}")
+        return uri
+    }
 
     suspend fun downloadFile(file: DbFile) {
         val data = accessToken?.let { apiRepository.downloadFile(it, file.id) }

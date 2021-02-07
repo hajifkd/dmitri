@@ -1,8 +1,10 @@
 package tokyo.theta.dmitri
 
 import android.graphics.BitmapFactory
+import android.media.MediaScannerConnection
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.activity.viewModels
@@ -23,6 +25,15 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val viewModel: MendeleyViewModel by viewModels()
+        var callbacked = false
+
+        MediaScannerConnection.scanFile(
+            this,
+            arrayOf("/sdcard/Documents/dmitri"),
+            null
+        ) { path, url ->
+            Log.d("scanned", "path:${path}, url:${url}")
+        }
 
         intent?.data?.let {
             if (it.scheme != getString(R.string.app_name)) {
@@ -34,6 +45,7 @@ class MainActivity : AppCompatActivity() {
                     // initiated by this app
                     it.getQueryParameter("code")?.let {
                         viewModel.authCode = it
+                        callbacked = true
                         Toast.makeText(this, getString(R.string.auth_succeeded), Toast.LENGTH_SHORT)
                             .show()
                     }
@@ -86,6 +98,10 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+
+        if (callbacked) {
+            viewModel.login()
+        }
     }
 
     override fun onBackPressed() {

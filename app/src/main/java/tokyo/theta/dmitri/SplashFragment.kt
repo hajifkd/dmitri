@@ -10,8 +10,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.observe
 import androidx.navigation.fragment.findNavController
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import tokyo.theta.dmitri.data.LoginResult
 import tokyo.theta.dmitri.databinding.FragmentSplashBinding
 
@@ -50,8 +53,11 @@ class SplashFragment : Fragment() {
                     requireActivity().finish()
                 }
                 LoginResult.Successful -> {
-                    if (viewModel.folders.value?.size == 0) {
-                        viewModel.updateData() // probably stop here and show msg
+                    lifecycleScope.launch {
+                        Log.d("isDbEmpty", "${viewModel.isDbEmpty()}")
+                        if (viewModel.isDbEmpty()) {
+                            viewModel.updateData() // probably stop here and show msg
+                        }
                     }
                     findNavController().navigate(SplashFragmentDirections.actionSplashFragmentToBrowserFragment())
                 }
