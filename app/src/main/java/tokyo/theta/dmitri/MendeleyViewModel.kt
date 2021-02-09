@@ -3,6 +3,7 @@ package tokyo.theta.dmitri
 import android.app.Application
 import android.net.Uri
 import android.util.Log
+import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -175,8 +176,9 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
     suspend fun getFiles(document: Document): List<DbFile> =
         dataRepository.database.getFileDao().findByDocumentId(document.id)
 
-    suspend fun localFileUri(file: DbFile): Uri? {
-        val uri = dataRepository.fileUri(file)
+    fun localFileUri(file: DbFile): Uri? {
+        val path = dataRepository.filePath(file)
+        val uri = path?.let { FileProvider.getUriForFile(app, app.getString(R.string.file_provider), it) }
 
         Log.d("local file uri", "uri: ${uri}, file: ${file}")
         return uri

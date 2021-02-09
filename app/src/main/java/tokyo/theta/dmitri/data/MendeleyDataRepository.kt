@@ -1,21 +1,11 @@
 package tokyo.theta.dmitri.data
 
-import android.content.ContentUris
-import android.content.ContentValues
 import android.content.Context
-import android.net.Uri
-import android.os.Build
 import android.os.Environment
-import android.provider.MediaStore
 import android.util.Log
-import android.webkit.MimeTypeMap
 import androidx.room.Room
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import tokyo.theta.dmitri.R
 import tokyo.theta.dmitri.data.model.db.*
 import tokyo.theta.dmitri.data.model.webapi.DocumentId
-import java.io.OutputStream
 import tokyo.theta.dmitri.data.model.webapi.Document as wDocument
 import tokyo.theta.dmitri.data.model.webapi.File as wFile
 import tokyo.theta.dmitri.data.model.webapi.Folder as wFolder
@@ -68,94 +58,16 @@ class MendeleyDataRepository(private val context: Context) {
         })
     }
 
-    private fun nameAndRelativePath(file: File): Pair<String, String>? {
-        return file.localFileName?.let {
-            val localFile = jFile(it)
-            Pair(localFile.name, "${Environment.DIRECTORY_DOCUMENTS}/dmitri/${localFile.parent}/")
-        }
-    }
-
-    suspend fun fileUri(file: File): Uri? {
-        val resolver = context.contentResolver
+    fun filePath(file: File): jFile? {
         if (file.localFileName == null) {
             return null
         }
-        val (name, rPath) = nameAndRelativePath(file)!!
 
-        Log.d("uri", "${MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)}")
+        return jFile(
+            context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS),
+            file.localFileName
+        )
 
-        resolver.query(
-            MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL),
-            null,
-            null,
-            null,
-            null
-        )?.let {
-            while (it.moveToNext()) {
-                Log.d(
-                    "query",
-                    "${it.getString(it.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME))}, ${
-                        it.getString(it.getColumnIndex(MediaStore.Files.FileColumns.RELATIVE_PATH))
-                    }"
-                )
-            }
-        }
-
-
-        return withContext(Dispatchers.IO) {
-            resolver.query(
-                MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL),
-                null,
-                "${MediaStore.Files.FileColumns.RELATIVE_PATH}=? and ${MediaStore.Files.FileColumns.DISPLAY_NAME}=?",
-                arrayOf(rPath, name),
-                null
-            )
-        }?.let {
-            Log.d("File query", "filename: $name, count: ${it.count}")
-            if (it.count == 0) {
-                // new file
-                ContentValues().apply {
-                    put(MediaStore.Files.FileColumns.DISPLAY_NAME, name)
-                    put(MediaStore.Files.FileColumns.RELATIVE_PATH, rPath)
-                    put(
-                        MediaStore.MediaColumns.MIME_TYPE,
-                        MimeTypeMap.getSingleton().getMimeTypeFromExtension(name.split('.').last())
-                            ?: "application/octet-stream"
-                    )
-                }.let {
-                    context.contentResolver.run {
-                        val uri =
-                            insert(MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL), it)
-                        Log.d("New file uri", "$uri")
-                        uri
-                    }
-                }
-            } else {
-                it.moveToFirst()
-                val id = it.getLong(it.getColumnIndex(MediaStore.MediaColumns._ID))
-                ContentUris.withAppendedId(
-                    MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL),
-                    id
-                )
-            }
-        }
-
-    }
-
-    private suspend fun outputStream(file: File): OutputStream? {
-        return withContext(Dispatchers.IO) {
-            file.localFileName?.let {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    context.contentResolver.run {
-                        fileUri(file)?.let { openOutputStream(it) }
-                    }
-                } else {
-                    val docDir =
-                        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
-                    jFile(jFile(docDir, context.getString(R.string.app_name)), it).outputStream()
-                }
-            }
-        }
     }
 
 
@@ -176,7 +88,12 @@ class MendeleyDataRepository(private val context: Context) {
                 file.localFileName = f.path
             }
 
-            val fos = outputStream(file)
+            val fos = filePath(file)?.run {
+                Log.d("saveFile", "save file to ${this}.")
+                parentFile.mkdirs()
+                createNewFile()
+                outputStream()
+            }
 
             if (fos == null || runCatching { fos.write(data) }.isFailure) {
                 return false // Handle?
