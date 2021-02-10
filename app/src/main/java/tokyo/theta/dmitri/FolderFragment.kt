@@ -53,6 +53,7 @@ class FolderFragment : Fragment() {
         val intent = Intent(Intent.ACTION_VIEW)
         intent.setDataAndType(viewModel.localFileUri(file), mime)
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
         Log.d("Open file intent", "$intent")
         startActivity(intent)
     }

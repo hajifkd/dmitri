@@ -5,6 +5,8 @@ import android.media.MediaScannerConnection
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
 import androidx.activity.viewModels
@@ -72,6 +74,18 @@ class MainActivity : AppCompatActivity() {
                     header.userName.text = it
                 }
 
+                toolbar.setOnMenuItemClickListener { item ->
+                    when (item.itemId) {
+                        R.id.action_sync -> {
+                            Log.d("appbar", "sync clicked")
+                            true
+                        }
+                        else -> {
+                            super.onOptionsItemSelected(item)
+                        }
+                    }
+                }
+
                 (supportFragmentManager.findFragmentById(R.id.navHostFragment) as NavHostFragment).apply {
                     NavigationUI.setupWithNavController(
                         toolbar,
@@ -119,4 +133,5 @@ class MainActivity : AppCompatActivity() {
         }
         super.onBackPressed()
     }
+
 }

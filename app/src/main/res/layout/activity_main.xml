@@ -24,7 +24,9 @@
                 android:id="@+id/toolbar"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
-                app:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"/>
+                app:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+                app:menu="@menu/menu_appbar"
+                app:popupTheme="@style/Theme.AppCompat.DayNight.NoActionBar"/>
         </com.google.android.material.appbar.AppBarLayout>
 
 
@@ -45,7 +47,7 @@
             android:id="@+id/navigation"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            app:menu="@menu/menu"
+            app:menu="@menu/menu_drawer"
             app:headerLayout="@layout/navigation_header"
             android:layout_gravity="start"
             style="@style/Widget.MaterialComponents.NavigationView">
