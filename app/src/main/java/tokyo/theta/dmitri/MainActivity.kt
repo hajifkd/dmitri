@@ -13,29 +13,23 @@ import androidx.activity.viewModels
 import androidx.core.view.GravityCompat
 import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.observe
 import androidx.navigation.findNavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.NavigationUI
+import kotlinx.coroutines.launch
 import tokyo.theta.dmitri.databinding.ActivityMainBinding
 import tokyo.theta.dmitri.databinding.NavigationHeaderBinding
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
+    private val viewModel: MendeleyViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val viewModel: MendeleyViewModel by viewModels()
         var callbacked = false
-
-        MediaScannerConnection.scanFile(
-            this,
-            arrayOf("/sdcard/Documents/dmitri"),
-            null
-        ) { path, url ->
-            Log.d("scanned", "path:${path}, url:${url}")
-        }
 
         intent?.data?.let {
             if (it.scheme != getString(R.string.app_name)) {
@@ -78,10 +72,26 @@ class MainActivity : AppCompatActivity() {
                     when (item.itemId) {
                         R.id.action_sync -> {
                             Log.d("appbar", "sync clicked")
+                            lifecycleScope.launch {
+                                val dirtyFiles = viewModel.dataRepository.dirtyFiles()
+                                if (!viewModel.refreshAccessToken()) {
+                                    Toast.makeText(
+                                        this@MainActivity,
+                                        "Failed to refresh the access token...",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    return@launch
+                                }
+                                Log.d("dirty", "$dirtyFiles")
+                                Log.d("upload", "Start to upload")
+                                // Show dialog and upload & delete
+                                // dirtyFiles.forEach { Log.d("dirty", "${viewModel.uploadFile(it)}") }
+
+                            }
                             true
                         }
                         else -> {
-                            super.onOptionsItemSelected(item)
+                            false
                         }
                     }
                 }

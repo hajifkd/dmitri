@@ -39,6 +39,10 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
     val userName: LiveData<String>
         get() = _userName
 
+    private val _conflicts = MutableLiveData<List<DbFile>>()
+    val conflicts: LiveData<List<DbFile>>
+        get() = _conflicts
+
     // db data
     val folders: LiveData<List<Folder>> = dataRepository.database.getFolderDao().folders()
 
@@ -90,6 +94,16 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
         return apiRepository.buildOAuthUri(state)
     }
 
+    suspend fun refreshAccessToken(): Boolean =
+        when (val result = refreshToken?.let { apiRepository.refreshToken(it) }) {
+            is AccessToken -> {
+                accessToken = result.accessToken
+                refreshToken = result.refreshToken
+                true
+            }
+            else -> false
+        }
+
     fun login() {
         val authCode = authCode
         if (authCode == null) {
@@ -114,7 +128,7 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
                         val prof = apiRepository.getUserProfile(result.accessToken)
                         if (prof?.displayName != null) {
                             _userName.value = prof.displayName
-                            Log.d("User Name", "$_userName.value")
+                            Log.d("User Name", "${prof.displayName}")
                             _loginResult.value = LoginResult.Successful
                             prof.photo?.standard?.let { apiRepository.downloadProfilePhoto(it) }
                                 ?.let {
@@ -178,7 +192,8 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun localFileUri(file: DbFile): Uri? {
         val path = dataRepository.filePath(file)
-        val uri = path?.let { FileProvider.getUriForFile(app, app.getString(R.string.file_provider), it) }
+        val uri =
+            path?.let { FileProvider.getUriForFile(app, app.getString(R.string.file_provider), it) }
 
         Log.d("local file uri", "uri: ${uri}, file: ${file}")
         return uri
@@ -193,6 +208,15 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
             Log.d("Download", "${file.name} is saved at ${file.localFileName}")
             //dataRepository.filePath(file)
         }
+    }
+
+    suspend fun uploadFile(file: DbFile): String? = accessToken?.let { token ->
+        dataRepository.filePath(file)
+            ?.let { filePath -> apiRepository.uploadFile(token, file.documentId, filePath) }
+    }
+
+    suspend fun findConflicts() {
+        val dirtyFiles = dataRepository.dirtyFiles()
     }
 
     companion object {

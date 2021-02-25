@@ -4,8 +4,11 @@ import android.content.Context
 import android.os.Environment
 import android.util.Log
 import androidx.room.Room
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import tokyo.theta.dmitri.data.model.db.*
 import tokyo.theta.dmitri.data.model.webapi.DocumentId
+import tokyo.theta.dmitri.util.sha1Hash
 import tokyo.theta.dmitri.data.model.webapi.Document as wDocument
 import tokyo.theta.dmitri.data.model.webapi.File as wFile
 import tokyo.theta.dmitri.data.model.webapi.Folder as wFolder
@@ -28,7 +31,7 @@ class MendeleyDataRepository(private val context: Context) {
         wDocuments: List<wDocument>,
         wFiles: List<wFile>
     ) {
-        // TODO check update
+        // TODO force update?
         val downloadedFiles =
             database.getFileDao().downloadedFiles().map { Pair(it.id, it) }.toMap()
 
@@ -57,6 +60,14 @@ class MendeleyDataRepository(private val context: Context) {
             )
         })
     }
+
+    suspend fun dirtyFiles(): List<File> = database.getFileDao().downloadedFiles()
+        .filter {
+            it.fileHash.toLowerCase() != filePath(it)?.let {
+                withContext(Dispatchers.Default) { sha1Hash(it) }
+            }
+        }
+
 
     fun filePath(file: File): jFile? {
         if (file.localFileName == null) {

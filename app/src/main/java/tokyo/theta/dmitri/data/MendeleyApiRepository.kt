@@ -32,9 +32,7 @@ class MendeleyApiRepository(val context: Context) {
                         chain.proceed(
                             chain.request().newBuilder().apply {
                                 credential?.let {
-                                    addHeader(
-                                        "Authorization", it
-                                    )
+                                    addHeader("Authorization", it)
                                 }
                             }.build()
                         )
@@ -143,6 +141,11 @@ class MendeleyApiRepository(val context: Context) {
         return withContext(Dispatchers.IO) {
             service.downloadFile(fileId).bytes()
         }
+    }
+
+    suspend fun uploadFile(accessToken: String, documentId: String, file: File): String? {
+        val service = apiService(accessToken, HttpLoggingInterceptor.Level.HEADERS)
+        return uploadFile(service, documentId, file)
     }
 
     fun profileFile(): File = File(context.filesDir, "profile")

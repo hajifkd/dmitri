@@ -1,10 +1,14 @@
 package tokyo.theta.dmitri.data.model.webapi
 
+import android.net.Uri
 import android.util.Log
+import android.webkit.MimeTypeMap
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.*
@@ -59,11 +63,40 @@ interface ApiService {
     @GET("/files/{file_id}")
     suspend fun downloadFile(@Path("file_id") fileId: String): ResponseBody
 
+    @DELETE("/files/{file_id}")
+    suspend fun deleteFile(@Path("file_id") fileId: String): Response<ResponseBody>
+
+    @POST("/files")
+    suspend fun uploadFile(
+        @Header("Link") docInfo: String,
+        @Header("Content-Disposition") fileInfo: String,
+        @Header("Content-Type") mime: String,
+        @Body body: RequestBody
+    ): Response<ResponseBody>
+
     @GET
-    suspend fun additionalData(@Url fileUrl: String): Response<ResponseBody>
+    suspend fun additionalData(@Url url: String): Response<ResponseBody>
 }
 
-suspend inline fun <S, reified T: List<S>> paginates(service: ApiService, resp: Response<T>): List<S>? {
+private fun docInfo(documentId: String): String =
+    "<https://api.mendeley.com/documents/$documentId>; rel=\"document\""
+
+private fun fileInfo(fileName: String): String = "attachment; filename=\"$fileName\""
+
+suspend fun uploadFile(service: ApiService, documentId: String, file: java.io.File): String? {
+    val resp = service.uploadFile(
+        docInfo(documentId),
+        fileInfo(file.name),
+        MimeTypeMap.getSingleton()
+            .getMimeTypeFromExtension(file.extension) ?: "application/octet-stream", file.asRequestBody()
+    )
+    return resp.headers()["Location"]?.let { Uri.parse(it).lastPathSegment }
+}
+
+suspend inline fun <S, reified T : List<S>> paginates(
+    service: ApiService,
+    resp: Response<T>
+): List<S>? {
     var headers = resp.headers()
     val result = resp.body()?.toMutableList()
     val gson = Gson()
