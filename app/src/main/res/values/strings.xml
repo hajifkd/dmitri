@@ -8,11 +8,16 @@
     <string name="pref_refresh_token">pref_refresh_token</string>
     <string name="mendeley_secret">uflwzbB6NKuo2HTO</string>
     <string name="mendeley_client_id">9445</string>
-    <string name="already_logged_in">Logged in...</string>
+    <string name="already_logged_in">Logged in…</string>
     <string name="auth_failed">Authentication failed. Try again.</string>
     <string name="auth_succeeded">Logged in successfully.</string>
     <string name="pref_user_name">pref_user_name</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="action_sync">Sync</string>
+    <string name="file_upload_dialog">Locally updated files have been found. Do we overwrite the remote files?</string>
+    <string name="overwrite">Overwrite</string>
+    <string name="upload_as">Save a copy</string>
+    <string name="cancel">Cancel</string>
+    <string name="multiple_file_found">Multiple files have been found. Choose one to open.</string>
 </resources>

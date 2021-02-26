@@ -1,5 +1,6 @@
 package tokyo.theta.dmitri
 
+import android.content.DialogInterface
 import android.graphics.BitmapFactory
 import android.media.MediaScannerConnection
 import androidx.appcompat.app.AppCompatActivity
@@ -8,8 +9,10 @@ import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.core.view.GravityCompat
 import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
@@ -22,10 +25,111 @@ import androidx.navigation.ui.NavigationUI
 import kotlinx.coroutines.launch
 import tokyo.theta.dmitri.databinding.ActivityMainBinding
 import tokyo.theta.dmitri.databinding.NavigationHeaderBinding
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MendeleyViewModel by viewModels()
+
+    private fun initNavHost() {
+        (supportFragmentManager.findFragmentById(R.id.navHostFragment) as NavHostFragment).apply {
+            NavigationUI.setupWithNavController(
+                binding.toolbar,
+                navController,
+                AppBarConfiguration(
+                    setOf(R.id.browserFragment, R.id.splashFragment),
+                    binding.drawer
+                )
+            )
+            navController.addOnDestinationChangedListener { _, destination, _ ->
+                binding.appbar.visibility = if (destination.id in arrayOf(
+                        R.id.splashFragment
+                    )
+                ) View.GONE else View.VISIBLE
+
+                binding.drawer.setDrawerLockMode(
+                    if (destination.id in arrayOf(
+                            R.id.splashFragment
+                        )
+                    ) DrawerLayout.LOCK_MODE_LOCKED_CLOSED else DrawerLayout.LOCK_MODE_UNLOCKED
+                )
+            }
+        }
+    }
+
+    private suspend fun askSyncDirtyFile(): Int = suspendCoroutine {
+        val callback = DialogInterface.OnClickListener { _, r -> it.resume(r) }
+        AlertDialog.Builder(this).setMessage(R.string.file_upload_dialog)
+            .setPositiveButton(R.string.overwrite, callback)
+            .setNeutralButton(R.string.upload_as, callback) // TODO not implemented
+            .setNegativeButton(R.string.cancel, callback)
+            .setOnCancelListener { _ -> it.resume(AlertDialog.BUTTON_NEGATIVE) }
+            .create().show()
+    }
+
+    private suspend fun syncData() {
+        val dirtyFiles = viewModel.dataRepository.dirtyFiles()
+
+        Log.d("dirtyFiles", "${dirtyFiles}")
+
+        Toast.makeText(
+            this@MainActivity,
+            "Synchronizing data...",
+            Toast.LENGTH_SHORT
+        ).show()
+
+        if (dirtyFiles.isNotEmpty()) {
+            val dirtySync = askSyncDirtyFile()
+
+            if (dirtySync == AlertDialog.BUTTON_NEGATIVE) {
+                Log.d("sync", "cancel")
+                return
+            }
+
+            viewModel.refreshTokenOrShowToast() ?: return
+
+            dirtyFiles.forEach {
+                if (!when (dirtySync) {
+                        AlertDialog.BUTTON_POSITIVE -> viewModel.overwriteFile(it)
+                        AlertDialog.BUTTON_NEUTRAL -> viewModel.saveAsNewFile(it)
+                        else -> return@forEach
+                    }
+                ) {
+                    Toast.makeText(
+                        this,
+                        "Failed to save files. Try again later...",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    return@forEach
+                }
+            }
+        } else {
+            viewModel.refreshTokenOrShowToast() ?: return
+        }
+
+        viewModel.updateData()
+    }
+
+    private fun initToolbar() {
+        binding.toolbar.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                R.id.action_sync -> {
+                    Log.d("appbar", "sync clicked")
+                    findNavController(R.id.navHostFragment).navigate(R.id.browserFragment)
+                    lifecycleScope.launch {
+                        viewModel.isSyncing.postValue(true)
+                        syncData()
+                        viewModel.isSyncing.postValue(false)
+                    }
+                    true
+                }
+                else -> {
+                    false
+                }
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,64 +171,14 @@ class MainActivity : AppCompatActivity() {
                 viewModel.userName.observe(this@MainActivity) {
                     header.userName.text = it
                 }
-
-                toolbar.setOnMenuItemClickListener { item ->
-                    when (item.itemId) {
-                        R.id.action_sync -> {
-                            Log.d("appbar", "sync clicked")
-                            lifecycleScope.launch {
-                                val dirtyFiles = viewModel.dataRepository.dirtyFiles()
-                                if (!viewModel.refreshAccessToken()) {
-                                    Toast.makeText(
-                                        this@MainActivity,
-                                        "Failed to refresh the access token...",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                    return@launch
-                                }
-                                Log.d("dirty", "$dirtyFiles")
-                                Log.d("upload", "Start to upload")
-                                // Show dialog and upload & delete
-                                // dirtyFiles.forEach { Log.d("dirty", "${viewModel.uploadFile(it)}") }
-
-                            }
-                            true
-                        }
-                        else -> {
-                            false
-                        }
-                    }
-                }
-
-                (supportFragmentManager.findFragmentById(R.id.navHostFragment) as NavHostFragment).apply {
-                    NavigationUI.setupWithNavController(
-                        toolbar,
-                        navController,
-                        AppBarConfiguration(
-                            setOf(
-                                R.id.browserFragment,
-                                R.id.splashFragment
-                            ), drawer
-                        )
-                    )
-                    navController.addOnDestinationChangedListener { _, destination, _ ->
-                        appbar.visibility = if (destination.id in arrayOf(
-                                R.id.splashFragment
-                            )
-                        ) View.GONE else View.VISIBLE
-
-                        drawer.setDrawerLockMode(
-                            if (destination.id in arrayOf(
-                                    R.id.splashFragment
-                                )
-                            ) DrawerLayout.LOCK_MODE_LOCKED_CLOSED else DrawerLayout.LOCK_MODE_UNLOCKED
-                        )
-                    }
-                }
             }
+        initToolbar()
+        initNavHost()
 
         if (callbacked) {
-            viewModel.login()
+            lifecycleScope.launch {
+                viewModel.login()
+            }
         }
     }
 

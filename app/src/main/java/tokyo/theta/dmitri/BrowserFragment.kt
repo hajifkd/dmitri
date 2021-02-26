@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.observe
 import androidx.navigation.fragment.findNavController
 import tokyo.theta.dmitri.data.model.db.FolderContent
@@ -23,13 +24,14 @@ class BrowserFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         // Inflate the layout for this fragment
         // return inflater.inflate(R.layout.fragment_browser, container, false)
         binding = FragmentBrowserBinding.inflate(inflater, container, false)
         val viewModel: MendeleyViewModel by requireActivity().viewModels()
 
-        binding.recyclerView.adapter = FolderAdapter {
+
+        binding.recyclerView.adapter = FolderAdapter(viewLifecycleOwner, viewModel.isSyncing) {
             findNavController().navigate(
                 BrowserFragmentDirections.actionBrowserFragmentToFolderFragment(
                     it.id
@@ -37,7 +39,6 @@ class BrowserFragment : Fragment() {
             )
         }.apply {
             viewModel.folders.observe(viewLifecycleOwner) {
-                Log.d("db", "$it")
                 submitList(it)
             }
         }

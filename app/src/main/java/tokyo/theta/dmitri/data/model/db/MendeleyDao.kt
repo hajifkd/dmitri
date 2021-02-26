@@ -23,7 +23,7 @@ interface FolderDao {
 
     @Transaction
     @Query("select * from Folder where id = :id limit 1")
-    fun folderContent(id: String): LiveData<FolderContent>
+    suspend fun folderContent(id: String): FolderContent
 }
 
 @Dao
@@ -69,6 +69,9 @@ interface FileDao {
 
     @Delete
     suspend fun deleteFile(file: File)
+
+    @Insert
+    suspend fun insertFile(file: File)
 
     @Update
     suspend fun updateFile(file: File)

@@ -3,12 +3,11 @@ package tokyo.theta.dmitri
 import android.app.Application
 import android.net.Uri
 import android.util.Log
+import android.widget.Toast
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.launch
 import tokyo.theta.dmitri.data.LoginResult
 import tokyo.theta.dmitri.data.MendeleyApiRepository
 import tokyo.theta.dmitri.data.MendeleyDataRepository
@@ -39,9 +38,7 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
     val userName: LiveData<String>
         get() = _userName
 
-    private val _conflicts = MutableLiveData<List<DbFile>>()
-    val conflicts: LiveData<List<DbFile>>
-        get() = _conflicts
+    var isSyncing = MutableLiveData<Boolean>().apply { value = false }
 
     // db data
     val folders: LiveData<List<Folder>> = dataRepository.database.getFolderDao().folders()
@@ -88,13 +85,13 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
         )
 
     fun buildOAuthUri(): Uri {
-        val state = (0..MendeleyViewModel.AUTH_STATE_LENGTH).map { ('a'..'z').random() }
+        val state = (0..AUTH_STATE_LENGTH).map { ('a'..'z').random() }
             .joinToString("")
         authState = state
         return apiRepository.buildOAuthUri(state)
     }
 
-    suspend fun refreshAccessToken(): Boolean =
+    private suspend fun refreshAccessToken(): Boolean =
         when (val result = refreshToken?.let { apiRepository.refreshToken(it) }) {
             is AccessToken -> {
                 accessToken = result.accessToken
@@ -104,7 +101,20 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
             else -> false
         }
 
-    fun login() {
+    suspend fun refreshTokenOrShowToast(): Unit? {
+        // check last_sync_at?
+        if (!refreshAccessToken()) {
+            Toast.makeText(
+                app,
+                "Failed to refresh the access token...",
+                Toast.LENGTH_SHORT
+            ).show()
+            return null
+        }
+        return Unit
+    }
+
+    suspend fun login() {
         val authCode = authCode
         if (authCode == null) {
             _loginResult.value = LoginResult.Failed
@@ -112,79 +122,76 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
         }
 
 
-        viewModelScope.launch {
-            val rToken = refreshToken
-            val result = if (rToken != null) {
-                apiRepository.refreshToken(rToken)
-            } else {
-                apiRepository.getToken(authCode)
-            }
+        val rToken = refreshToken
+        val result = if (rToken != null) {
+            apiRepository.refreshToken(rToken)
+        } else {
+            apiRepository.getToken(authCode)
+        }
 
-            when (result) {
-                is AccessToken -> {
-                    accessToken = result.accessToken
-                    refreshToken = result.refreshToken
-                    try {
-                        val prof = apiRepository.getUserProfile(result.accessToken)
-                        if (prof?.displayName != null) {
-                            _userName.value = prof.displayName
-                            Log.d("User Name", "${prof.displayName}")
-                            _loginResult.value = LoginResult.Successful
-                            prof.photo?.standard?.let { apiRepository.downloadProfilePhoto(it) }
-                                ?.let {
-                                    _profilePhoto.value = it
-                                    saveUserName(prof.displayName)
-                                }
-                        } else {
-                            Log.e("Profile", "failed to get the user data")
-                            _loginResult.postValue(LoginResult.Failed)
-                        }
-                    } catch (e: Exception) {
+        when (result) {
+            is AccessToken -> {
+                accessToken = result.accessToken
+                refreshToken = result.refreshToken
+                try {
+                    val prof = apiRepository.getUserProfile(result.accessToken)
+                    if (prof?.displayName != null) {
+                        _userName.value = prof.displayName
+                        Log.d("User Name", "${prof.displayName}")
+                        _loginResult.value = LoginResult.Successful
+                        prof.photo?.standard?.let { apiRepository.downloadProfilePhoto(it) }
+                            ?.let {
+                                _profilePhoto.value = it
+                                saveUserName(prof.displayName)
+                            }
+                    } else {
                         Log.e("Profile", "failed to get the user data")
                         _loginResult.postValue(LoginResult.Failed)
                     }
-                }
-                is NetworkError -> {
-                    val u = loadUserName()
-                    if (u != null) {
-                        _userName.value = u
-                        _profilePhoto.value = apiRepository.profileFile()
-                        _loginResult.postValue(LoginResult.Offline)
-                    } else {
-                        _loginResult.postValue(LoginResult.OfflineWithoutData)
-                    }
-                }
-                else -> {
+                } catch (e: Exception) {
+                    Log.e("Profile", "failed to get the user data")
                     _loginResult.postValue(LoginResult.Failed)
                 }
             }
-        }
-    }
-
-    fun updateData() {
-        viewModelScope.launch {
-            val folders = accessToken?.let { apiRepository.listFolders(it) } ?: listOf()
-            Log.d("folders", folders.toString())
-            val folderContents = folders.mapNotNull { folder ->
-                accessToken?.let { token ->
-                    apiRepository.documentIdsInFolder(
-                        token,
-                        folder
-                    )?.let {
-                        Pair(folder, it)
-                    }
+            is NetworkError -> {
+                val u = loadUserName()
+                if (u != null) {
+                    _userName.value = u
+                    _profilePhoto.value = apiRepository.profileFile()
+                    _loginResult.postValue(LoginResult.Offline)
+                } else {
+                    _loginResult.postValue(LoginResult.OfflineWithoutData)
                 }
             }
-            Log.d("docids", folderContents.toString())
-            Log.d("folderContents", folderContents.toString())
-            val documents = accessToken?.let { apiRepository.listDocuments(it) } ?: listOf()
-            val files = accessToken?.let { apiRepository.listFiles(it) } ?: listOf()
-
-            dataRepository.updateData(folders, folderContents.toMap(), documents, files)
+            else -> {
+                _loginResult.postValue(LoginResult.Failed)
+            }
         }
     }
 
-    fun folderContent(folderId: String): LiveData<FolderContent> =
+    suspend fun updateData() {
+        val folders = accessToken?.let { apiRepository.listFolders(it) } ?: listOf()
+        Log.d("folders", folders.toString())
+        val folderContents = folders.mapNotNull { folder ->
+            accessToken?.let { token ->
+                apiRepository.documentIdsInFolder(
+                    token,
+                    folder
+                )?.let {
+                    Pair(folder, it)
+                }
+            }
+        }
+        Log.d("docids", folderContents.toString())
+        Log.d("folderContents", folderContents.toString())
+        val documents = accessToken?.let { apiRepository.listDocuments(it) } ?: listOf()
+        val files = accessToken?.let { apiRepository.listFiles(it) } ?: listOf()
+
+        dataRepository.updateData(folders, folderContents.toMap(), documents, files)
+
+    }
+
+    suspend fun folderContent(folderId: String): FolderContent =
         dataRepository.database.getFolderDao().folderContent(folderId)
 
     suspend fun getFiles(document: Document): List<DbFile> =
@@ -215,8 +222,25 @@ class MendeleyViewModel(private val app: Application) : AndroidViewModel(app) {
             ?.let { filePath -> apiRepository.uploadFile(token, file.documentId, filePath) }
     }
 
-    suspend fun findConflicts() {
-        val dirtyFiles = dataRepository.dirtyFiles()
+    suspend fun overwriteFile(file: DbFile): Boolean {
+        val newId = uploadFile(file)
+        accessToken?.let { apiRepository.deleteFile(it, file.id) } ?: return false
+        return if (newId != null) {
+            dataRepository.updateFileId(file, newId)
+            true
+        } else {
+            false
+        }
+    }
+
+    suspend fun saveAsNewFile(file: DbFile): Boolean {
+        val newId = uploadFile(file)
+        return if (newId != null) {
+            dataRepository.saveAsNewFile(file, newId)
+            true
+        } else {
+            false
+        }
     }
 
     companion object {

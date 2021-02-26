@@ -27,12 +27,15 @@ class SplashFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         val viewModel: MendeleyViewModel by requireActivity().viewModels()
         // Inflate the layout for this fragment
         binding = FragmentSplashBinding.inflate(inflater, container, false).apply {
             button.setOnClickListener {
-                viewModel.login()
+                // eventually, this button should be removed and login be called only from MainActivity
+                lifecycleScope.launch {
+                    viewModel.login()
+                }
                 button.visibility = View.INVISIBLE
             }
 

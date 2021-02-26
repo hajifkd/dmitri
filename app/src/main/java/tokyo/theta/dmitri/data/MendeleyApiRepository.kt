@@ -143,6 +143,13 @@ class MendeleyApiRepository(val context: Context) {
         }
     }
 
+    suspend fun deleteFile(accessToken: String, fileId: String) {
+        val service = apiService(accessToken)
+        withContext(Dispatchers.IO) {
+            service.deleteFile(fileId)
+        }
+    }
+
     suspend fun uploadFile(accessToken: String, documentId: String, file: File): String? {
         val service = apiService(accessToken, HttpLoggingInterceptor.Level.HEADERS)
         return uploadFile(service, documentId, file)
